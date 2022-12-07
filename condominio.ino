@@ -11,16 +11,17 @@
 #define ButAgua 2 //Botão Agua, Cabo Rosa
 #define ButLuz 3 //Botão Luz, Cabo Rosa
 #define SenPres 4 //Sensor de Presença, cabo Marrom
+
 //DECLARAÇÃO DE OUTPUTS
 #define LedAgua 12 //Led informativo do fluxo de agua corrente, cabo Azul
 #define LedLuz 11 //Led informativo de consumo de energia, cabo Amarelo
 #define ReleAgua 8 //Rele representando uma válvula solenóide, cabo Roxo
 #define ReleLuz 9 //Rele, cabo Rosa
 #define Lampada 5 //Led representando uma lampada, cabo Verde
+
+
 //Os leds conectados aos reles não tem ligação em portas arduíno
 
-//definir numero da casa
-string Casa="1";
 
 //configurando conexao rede
 byte mac_addr[] = { 0x00, 0x27, 0x13, 0xAE, 0x79, 0x0F }; //informar MAC host
@@ -29,7 +30,7 @@ byte mac_addr[] = { 0x00, 0x27, 0x13, 0xAE, 0x79, 0x0F }; //informar MAC host
 //IPAddress subnet(255, 255, 255, 0); //~Define a máscara de rede da rede lan
 
 //acesso ao BD
-IPAddress server_addr(10,10,117,14); //informar ip banco de dados
+IPAddress server_addr(192,168,0,112); //informar ip banco de dados
 char user[] = "arduino"; //usuário banco
 char password[] = "arduino123"; //senha banco
 
@@ -50,26 +51,26 @@ MySQL_Connection conn((Client *)&client); //será responsável pela conexão com
 int leitura; 
 float leituraconvertida;
 char sentenca[128]; //isso vai puro para o banco
-int lerbanco; 
 
 //global millis
 unsigned long int tempo_atual = 0;
 unsigned long ultimo_tempo = 0;
 
 
-//leitura agua sql
+//agua sql
 char valorAgua[10];
+int lerbancoagua;
 
-//leitura luz sql
+//luz sql
 char valorLuz[10];
-
+int lerbancoluz; 
 
 //Variaveis Globais de leitura de sensores
-volatile byte valorBotaoAgua = LOW;
-volatile byte valorBotaoLuz = LOW;
-volatile byte estadoBotaoAgua = LOW;
-volatile byte estadoBotaoLuz = LOW;
-volatile byte valorPresenca = LOW;
+volatile byte valorBotaoAgua;
+volatile byte valorBotaoLuz;
+volatile byte estadoBotaoAgua;
+volatile byte estadoBotaoLuz;
+volatile byte valorPresenca;
 
 
 //---------------------------------------------------------------------------------------------------------------------
@@ -104,11 +105,24 @@ void setup()
       delay(1000);
       Serial.println("Conectando ao SQL novamente");
    }
-   
+
+ /*  
   //definindo todos os leds por padrão como desligados
    digitalWrite(LedAgua, LOW);
    digitalWrite(LedLuz, LOW);
    digitalWrite(Lampada, LOW);  
+*/
+
+   pinMode(SenAgua, INPUT);
+   pinMode(SenLuz, INPUT);
+   pinMode(ButAgua, INPUT);
+   pinMode(ButLuz, INPUT);
+   pinMode(SenPres, INPUT);
+   pinMode(LedAgua, OUTPUT);
+   pinMode(LedLuz, OUTPUT);
+   pinMode(ReleAgua, OUTPUT);
+   pinMode(ReleLuz, OUTPUT);
+   pinMode(Lampada, OUTPUT);
   
 }
 
@@ -121,11 +135,14 @@ void loop()
    LendoSensor();
    ControleAgua();
    ControleLuz();
-   Lampada(); 
+   AcendeLampada(); 
    leituraAgua();
    leituraLuz();
-   leituraBanco();
+   leituraBancoAgua();
+   leituraBancoLuz();
 
+
+   delay(1000);
   
   
  // 	if(((millis() - controleLeitura) > esperaLeitura))
@@ -133,29 +150,36 @@ void loop()
  //   delay(10);
 }
 
-
 void LendoSensor(){
  estadoBotaoAgua = digitalRead(ButAgua);
  if (estadoBotaoAgua == HIGH) valorBotaoAgua=!valorBotaoAgua;
- 
- estadoBotaoLuz = digitalRead(ButLuz);
+Serial.print("Agua Corte Status: ");
+Serial.println(valorBotaoAgua);
+
+estadoBotaoLuz = digitalRead(ButLuz);
  if (estadoBotaoLuz == HIGH) valorBotaoLuz=!valorBotaoLuz;
-  
- valorPresenca = digitalRead(SenPres);
+Serial.print("Luz Corte Status: ");
+Serial.println(valorBotaoLuz);
+
+valorPresenca = digitalRead(SenPres);
+Serial.print("Presença: ");
+Serial.println(valorPresenca);
 
 }
 
-
 void ControleAgua(){ 
-  if (estadoBotaoAgua == HIGH) digitalWrite(ReleAgua, valorBotaoAgua);
+  if (valorBotaoAgua == HIGH ^ lerbancoagua == 1) digitalWrite(ReleAgua, HIGH); //USO DA PORTA LÓGICA XOR POIS SÃO DOIS INTERRUPTORES
+   else digitalWrite(ReleAgua, LOW);
+  delay(50);
 }    
 
 void ControleLuz(){ 
-  if (estadoBotaoLuz == HIGH) digitalWrite(ReleLuz, valorBotaoLuz);
+  if (valorBotaoLuz == HIGH ^ lerbancoluz == 1) digitalWrite(ReleLuz, HIGH); //USO DA PORTA LÓGICA XOR POIS SÃO DOIS INTERRUPTORES
+   else digitalWrite(ReleLuz, LOW);
+  delay(50);
 }    
-  
 
-void Lampada(){
+void AcendeLampada(){
     tempo_atual = millis();
   
     if (valorPresenca == HIGH){ 
@@ -163,11 +187,10 @@ void Lampada(){
     digitalWrite(Lampada, HIGH);  
     }  
            
-  	if ((valorPresenca == LOW) && (tempo_atual - ultimo_tempo >= 5000)){         
+  	if ((valorPresenca == LOW) && (tempo_atual - ultimo_tempo >= 10000)){       //dez segundos ligado   
     digitalWrite(Lampada, LOW);
     }
-}
-    
+}   
 
 void leituraAgua(){
    Serial.println("Executando leitura");
@@ -197,19 +220,16 @@ void leituraLuz(){
      else digitalWrite(LedLuz, LOW);
 }
 
-
 void enviaDados(){	
  	MySQL_Cursor *cur_mem = new MySQL_Cursor(&conn); //prepara para enviar ao banco
    	cur_mem->execute(sentenca); //deste vez é a sentença para incluir uma linha na tabela
     delete cur_mem; //limpa memória do arduíno após enviar ao banco
     delay(1000); //delay de um millis
 }
-
-    
-void leituraBanco(){
+  
+void leituraBancoAgua(){
    
    row_values *row = NULL;
-   //long lerbanco = 0;
    delay(1000);
 
   MySQL_Cursor *cur_mem = new MySQL_Cursor(&conn);
@@ -220,20 +240,44 @@ void leituraBanco(){
   do {
     row = cur_mem->get_next_row();
     if (row != NULL) {
-      lerbanco = atol(row->values[0]);
+      lerbancoagua = atol(row->values[0]);
     }
   } while (row != NULL);
 
   delete cur_mem;
 
   Serial.print("  Status Botao = ");
-  Serial.println(lerbanco);
+  Serial.println(lerbancoagua);
 
   delay(500); 
    
 }
     
-    
+void leituraBancoLuz(){
+   
+   row_values *row = NULL;
+   delay(1000);
+
+  MySQL_Cursor *cur_mem = new MySQL_Cursor(&conn);
+  cur_mem->execute(STATUS_BOTAOLUZ);
+  
+  column_names *columns = cur_mem->get_columns();
+
+  do {
+    row = cur_mem->get_next_row();
+    if (row != NULL) {
+      lerbancoluz = atol(row->values[0]);
+    }
+  } while (row != NULL);
+
+  delete cur_mem;
+
+  Serial.print("  Status Botao = ");
+  Serial.println(lerbancoluz);
+
+  delay(500); 
+   
+}
 
 
     
