@@ -55,6 +55,9 @@ char sentenca[128]; //isso vai puro para o banco
 //global millis
 unsigned long int tempo_atual = 0;
 unsigned long ultimo_tempo = 0;
+unsigned long leituramillis = millis();
+unsigned long controlemillis = millis();
+unsigned long bancomillis = millis();
 
 
 //agua sql
@@ -106,12 +109,6 @@ void setup()
       Serial.println("Conectando ao SQL novamente");
    }
 
- /*  
-  //definindo todos os leds por padrão como desligados
-   digitalWrite(LedAgua, LOW);
-   digitalWrite(LedLuz, LOW);
-   digitalWrite(Lampada, LOW);  
-*/
 
    pinMode(SenAgua, INPUT);
    pinMode(SenLuz, INPUT);
@@ -131,39 +128,92 @@ void setup()
 void loop() 
 {
   
+   leituradesensor();
   
-   LendoSensor();
-   ControleAgua();
-   ControleLuz();
-   AcendeLampada(); 
-   leituraAgua();
-   leituraLuz();
-   leituraBancoAgua();
-   leituraBancoLuz();
+   controledesensor();
 
+   bancodesensor();
 
-   delay(1000);
-  
-  
- // 	if(((millis() - controleLeitura) > esperaLeitura))
- //   	enviaDados(); 60000
- //   delay(10);
+   delay(100);
+
 }
 
-void LendoSensor(){
+
+void leituradesensor(){
+   
+   if((millis() - leituramillis) > 100){
+   LendoSensor1(); //botão
+   delay(500);
+   LendoSensor2(); //botão
+   delay(500);
+   LendoSensor3(); //presença
+   delay(500);
+   leituraBancoAgua(); //leitutabotaoweb
+   delay(500);
+   leituraBancoLuz(); //leitutabotaoweb
+   delay(500);
+   ledaguamonitor();
+   delay(500);
+   ledluzmonitor();
+   delay(500);
+  }
+  if((millis() - leituramillis) > 100){
+    leituramillis = millis();
+  }
+
+}
+
+void controledesensor(){
+
+  if((millis() - controlemillis) > 1000){
+   ControleAgua(); //rele
+   delay(500);
+   ControleLuz(); //rele   
+   delay(500);
+   AcendeLampada(); //lampada
+   delay(500);
+  }
+  if((millis() - controlemillis) > 1000){
+      controlemillis = millis();
+  }
+}
+
+void bancodesensor(){
+  if((millis() - bancomillis) > 60000){
+   leituraAgua(); //leitura para banco / led
+   delay(1000);
+   leituraLuz(); //leitura para banco / led
+   delay(1000);
+  }
+  if((millis() - bancomillis) > 60000){
+      bancomillis = millis();
+  }
+}
+
+
+void LendoSensor1(){
  estadoBotaoAgua = digitalRead(ButAgua);
  if (estadoBotaoAgua == HIGH) valorBotaoAgua=!valorBotaoAgua;
 Serial.print("Agua Corte Status: ");
 Serial.println(valorBotaoAgua);
+delay(1000);
+}
 
+void LendoSensor2(){
 estadoBotaoLuz = digitalRead(ButLuz);
  if (estadoBotaoLuz == HIGH) valorBotaoLuz=!valorBotaoLuz;
 Serial.print("Luz Corte Status: ");
 Serial.println(valorBotaoLuz);
+delay(1000);
+}
 
+void LendoSensor3(){
 valorPresenca = digitalRead(SenPres);
-Serial.print("Presença: ");
+
+Serial.print("Presenca: ");
 Serial.println(valorPresenca);
+
+delay(1000);
 
 }
 
@@ -193,30 +243,39 @@ void AcendeLampada(){
 }   
 
 void leituraAgua(){
-   Serial.println("Executando leitura");
-   leitura = analogRead(SenAgua); //recebe valor do sensor
-   leituraconvertida = (float(analogRead(SenAgua))/2.28; //converte os valores de sensor para valores reais, 
-   Serial.print("Agua: "); //mostra leitura
-   Serial.println(round(leituraconvertida)); //mostra leitura
+   ledaguamonitor();
    dtostrf(leituraconvertida, 6, 2, valorAgua); //converte o valor da leitura para uma char para poder enviar ao banco, existem quatro parâmetros, onde estes são: a variável do tipo float que queremos converter, o número de algarismos que o resultado da conversão deve ter (incluindo a vírgula), o número de casas após a vírgula e o vetor de char em que será armazenada a informação retornada por esta função
    sprintf(sentenca, INSERIR_AGUA, valorAgua); //construir a sentença contendo a instrução que será utilizada na manipulação do banco de dados. O primeiro parâmetro desta função consiste na variável do tipo char na qual será armazenada a sentença após ser construída, o segundo, deve conter a variável que armazenou a parte textual da frase e o local onde será inserida a variável (%s) e o terceiro parâmetro é justamente a variável que será inserida no local especificado no segundo parâmetro   
    enviaDados();
   
-   if(leituraconvertida>22,5) digitalWrite(LedAgua, HIGH); 
-   else digitalWrite(LedAgua, LOW);
 }
 
 void leituraLuz(){
-   Serial.println("Executando leitura");
-   leitura = analogRead(SenLuz); //recebe valor do sensor
-   leituraconvertida = (float(analogRead(SenLuz))/50; //converte os valores de sensor para valores reais
-   Serial.print("Luz: "); //mostra leitura
-   Serial.println(round(leituraconvertida)); //mostra leitura
+   ledluzmonitor();
    dtostrf(leituraconvertida, 6, 2, valorLuz); //converte o valor da leitura para uma char para poder enviar ao banco, existem quatro parâmetros, onde estes são: a variável do tipo float que queremos converter, o número de algarismos que o resultado da conversão deve ter (incluindo a vírgula), o número de casas após a vírgula e o vetor de char em que será armazenada a informação retornada por esta função
    sprintf(sentenca, INSERIR_LUZ, valorLuz); //construir a sentença contendo a instrução que será utilizada na manipulação do banco de dados. O primeiro parâmetro desta função consiste na variável do tipo char na qual será armazenada a sentença após ser construída, o segundo, deve conter a variável que armazenou a parte textual da frase e o local onde será inserida a variável (%s) e o terceiro parâmetro é justamente a variável que será inserida no local especificado no segundo parâmetro
    enviaDados();
-  
-     if(leituraconvertida>1.02) digitalWrite(LedLuz, HIGH);
+
+}
+
+
+void ledaguamonitor(){
+  Serial.println("Executando leitura");
+   leitura = analogRead(SenAgua); //recebe valor do sensor
+   leituraconvertida = (float(analogRead(SenAgua))/2.28); //converte os valores de sensor para valores reais, 
+   Serial.print("Agua: "); //mostra leitura
+   Serial.println(round(leituraconvertida)); //mostra leitura 
+    if(leituraconvertida>45) digitalWrite(LedAgua, HIGH); 
+    else digitalWrite(LedAgua, LOW);
+}
+
+void ledluzmonitor(){
+   Serial.println("Executando leitura");
+   leitura = analogRead(SenLuz); //recebe valor do sensor
+   leituraconvertida = (float(analogRead(SenLuz))/50); //converte os valores de sensor para valores reais
+   Serial.print("Luz: "); //mostra leitura
+   Serial.println(round(leituraconvertida)); //mostra leitura
+     if(leituraconvertida>2.05) digitalWrite(LedLuz, HIGH);
      else digitalWrite(LedLuz, LOW);
 }
 
@@ -246,7 +305,7 @@ void leituraBancoAgua(){
 
   delete cur_mem;
 
-  Serial.print("  Status Botao = ");
+  Serial.print("  Status Botao Agua WEB = ");
   Serial.println(lerbancoagua);
 
   delay(500); 
@@ -272,7 +331,7 @@ void leituraBancoLuz(){
 
   delete cur_mem;
 
-  Serial.print("  Status Botao = ");
+  Serial.print("  Status Botao LUZ WEB = ");
   Serial.println(lerbancoluz);
 
   delay(500); 
