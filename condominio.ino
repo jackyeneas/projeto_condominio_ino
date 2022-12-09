@@ -58,6 +58,7 @@ unsigned long ultimo_tempo = 0;
 unsigned long leituramillis = millis();
 unsigned long controlemillis = millis();
 unsigned long bancomillis = millis();
+unsigned long  botaomillis = millis();
 
 
 //agua sql
@@ -74,6 +75,8 @@ volatile byte valorBotaoLuz;
 volatile byte estadoBotaoAgua;
 volatile byte estadoBotaoLuz;
 volatile byte valorPresenca;
+volatile byte ReleAguaStatus;
+volatile byte ReleLuzStatus;
 
 
 //---------------------------------------------------------------------------------------------------------------------
@@ -127,9 +130,10 @@ void setup()
 
 void loop() 
 {
-  
+  // leituradebotao();
+
    leituradesensor();
-  
+
    controledesensor();
 
    bancodesensor();
@@ -138,24 +142,42 @@ void loop()
 
 }
 
+/*
+void leituradebotao(){
+   
+   if((millis() - botaomillis) > 100){
+   delay(10);
+   LendoSensor1(); //botão
+   delay(10);
+   LendoSensor2(); //botão
+   delay(10);
+   LendoSensor3(); //presença
+  }
+  if((millis() - botaomillis) > 100){
+    botaomillis = millis();
+  }
+
+}
+*/
 
 void leituradesensor(){
    
    if((millis() - leituramillis) > 100){
+   delay(100);
    LendoSensor1(); //botão
-   delay(500);
+   delay(100);
    LendoSensor2(); //botão
-   delay(500);
+   delay(100);
    LendoSensor3(); //presença
-   delay(500);
+   delay(100);
    leituraBancoAgua(); //leitutabotaoweb
-   delay(500);
+   delay(100);
    leituraBancoLuz(); //leitutabotaoweb
-   delay(500);
+   delay(100);
    ledaguamonitor();
-   delay(500);
+   delay(100);
    ledluzmonitor();
-   delay(500);
+  
   }
   if((millis() - leituramillis) > 100){
     leituramillis = millis();
@@ -166,12 +188,13 @@ void leituradesensor(){
 void controledesensor(){
 
   if((millis() - controlemillis) > 1000){
+   delay(500);
    ControleAgua(); //rele
    delay(500);
    ControleLuz(); //rele   
    delay(500);
    AcendeLampada(); //lampada
-   delay(500);
+   
   }
   if((millis() - controlemillis) > 1000){
       controlemillis = millis();
@@ -180,6 +203,7 @@ void controledesensor(){
 
 void bancodesensor(){
   if((millis() - bancomillis) > 60000){
+   delay(1000);
    leituraAgua(); //leitura para banco / led
    delay(1000);
    leituraLuz(); //leitura para banco / led
@@ -192,40 +216,45 @@ void bancodesensor(){
 
 
 void LendoSensor1(){
- estadoBotaoAgua = digitalRead(ButAgua);
- if (estadoBotaoAgua == HIGH) valorBotaoAgua=!valorBotaoAgua;
-Serial.print("Agua Corte Status: ");
-Serial.println(valorBotaoAgua);
-delay(1000);
-}
+  delay(1000); 
+  estadoBotaoAgua = digitalRead(ButAgua);
+  if (estadoBotaoAgua == HIGH) valorBotaoAgua=!valorBotaoAgua;
+  Serial.print("Agua Corte Status: ");
+  Serial.println(valorBotaoAgua);
+  delay(100);
+  }
 
 void LendoSensor2(){
-estadoBotaoLuz = digitalRead(ButLuz);
- if (estadoBotaoLuz == HIGH) valorBotaoLuz=!valorBotaoLuz;
-Serial.print("Luz Corte Status: ");
-Serial.println(valorBotaoLuz);
-delay(1000);
-}
+  delay(1000);
+  estadoBotaoLuz = digitalRead(ButLuz);
+   if (estadoBotaoLuz == HIGH) valorBotaoLuz=!valorBotaoLuz;
+    Serial.print("Luz Corte Status: ");
+    Serial.println(valorBotaoLuz);
+    delay(100);
+    }
 
 void LendoSensor3(){
-valorPresenca = digitalRead(SenPres);
+  valorPresenca = digitalRead(SenPres);
 
-Serial.print("Presenca: ");
-Serial.println(valorPresenca);
+  Serial.print("Presenca: ");
+  Serial.println(valorPresenca);
 
-delay(1000);
+  delay(1000);
 
-}
+  }
 
 void ControleAgua(){ 
+
   if (valorBotaoAgua == HIGH ^ lerbancoagua == 1) digitalWrite(ReleAgua, HIGH); //USO DA PORTA LÓGICA XOR POIS SÃO DOIS INTERRUPTORES
    else digitalWrite(ReleAgua, LOW);
+   ReleAguaStatus = digitalRead(ReleAgua);
   delay(50);
 }    
 
 void ControleLuz(){ 
   if (valorBotaoLuz == HIGH ^ lerbancoluz == 1) digitalWrite(ReleLuz, HIGH); //USO DA PORTA LÓGICA XOR POIS SÃO DOIS INTERRUPTORES
    else digitalWrite(ReleLuz, LOW);
+   ReleLuzStatus = digitalRead(ReleLuz);
   delay(50);
 }    
 
@@ -241,6 +270,27 @@ void AcendeLampada(){
     digitalWrite(Lampada, LOW);
     }
 }   
+
+void ledaguamonitor(){
+  Serial.println("Executando leitura");
+   leitura = analogRead(SenAgua); //recebe valor do sensor
+   leituraconvertida = (float(analogRead(SenAgua))/2.28); //converte os valores de sensor para valores reais, 
+   Serial.print("Agua: "); //mostra leitura
+   Serial.println(round(leituraconvertida)); //mostra leitura 
+    if(leituraconvertida>45 && ReleAguaStatus == LOW ) digitalWrite(LedAgua, HIGH); 
+    else digitalWrite(LedAgua, LOW);
+}
+
+void ledluzmonitor(){
+   Serial.println("Executando leitura");
+   leitura = analogRead(SenLuz); //recebe valor do sensor
+   leituraconvertida = (float(analogRead(SenLuz))/50); //converte os valores de sensor para valores reais
+   Serial.print("Luz: "); //mostra leitura
+   Serial.println(round(leituraconvertida)); //mostra leitura
+     if(leituraconvertida>2.05 && ReleLuzStatus == LOW) digitalWrite(LedLuz, HIGH);
+     else digitalWrite(LedLuz, LOW);
+}
+
 
 void leituraAgua(){
    ledaguamonitor();
@@ -258,26 +308,6 @@ void leituraLuz(){
 
 }
 
-
-void ledaguamonitor(){
-  Serial.println("Executando leitura");
-   leitura = analogRead(SenAgua); //recebe valor do sensor
-   leituraconvertida = (float(analogRead(SenAgua))/2.28); //converte os valores de sensor para valores reais, 
-   Serial.print("Agua: "); //mostra leitura
-   Serial.println(round(leituraconvertida)); //mostra leitura 
-    if(leituraconvertida>45) digitalWrite(LedAgua, HIGH); 
-    else digitalWrite(LedAgua, LOW);
-}
-
-void ledluzmonitor(){
-   Serial.println("Executando leitura");
-   leitura = analogRead(SenLuz); //recebe valor do sensor
-   leituraconvertida = (float(analogRead(SenLuz))/50); //converte os valores de sensor para valores reais
-   Serial.print("Luz: "); //mostra leitura
-   Serial.println(round(leituraconvertida)); //mostra leitura
-     if(leituraconvertida>2.05) digitalWrite(LedLuz, HIGH);
-     else digitalWrite(LedLuz, LOW);
-}
 
 void enviaDados(){	
  	MySQL_Cursor *cur_mem = new MySQL_Cursor(&conn); //prepara para enviar ao banco
