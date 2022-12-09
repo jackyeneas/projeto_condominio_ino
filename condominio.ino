@@ -25,12 +25,9 @@
 
 //configurando conexao rede
 byte mac_addr[] = { 0x00, 0x27, 0x13, 0xAE, 0x79, 0x0F }; //informar MAC host
-//IPAddress ip(192,168,1,88);          //~Define o endereco IP da rede lan
-//IPAddress gateway(192,168,1,1);     //~Define o gateway da rede lan
-//IPAddress subnet(255, 255, 255, 0); //~Define a máscara de rede da rede lan
 
 //acesso ao BD
-IPAddress server_addr(192,168,0,112); //informar ip banco de dados
+IPAddress server_addr(10,10,117,14); //informar ip banco de dados
 char user[] = "arduino"; //usuário banco
 char password[] = "arduino123"; //senha banco
 
@@ -130,8 +127,6 @@ void setup()
 
 void loop() 
 {
-  // leituradebotao();
-
    leituradesensor();
 
    controledesensor();
@@ -141,24 +136,6 @@ void loop()
    delay(100);
 
 }
-
-/*
-void leituradebotao(){
-   
-   if((millis() - botaomillis) > 100){
-   delay(10);
-   LendoSensor1(); //botão
-   delay(10);
-   LendoSensor2(); //botão
-   delay(10);
-   LendoSensor3(); //presença
-  }
-  if((millis() - botaomillis) > 100){
-    botaomillis = millis();
-  }
-
-}
-*/
 
 void leituradesensor(){
    
@@ -216,9 +193,12 @@ void bancodesensor(){
 
 
 void LendoSensor1(){
-  delay(1000); 
+  delay(1000);
   estadoBotaoAgua = digitalRead(ButAgua);
-  if (estadoBotaoAgua == HIGH) valorBotaoAgua=!valorBotaoAgua;
+  if (estadoBotaoAgua == HIGH) {
+    delay(500);
+    valorBotaoAgua=!valorBotaoAgua;
+    }
   Serial.print("Agua Corte Status: ");
   Serial.println(valorBotaoAgua);
   delay(100);
@@ -227,7 +207,10 @@ void LendoSensor1(){
 void LendoSensor2(){
   delay(1000);
   estadoBotaoLuz = digitalRead(ButLuz);
-   if (estadoBotaoLuz == HIGH) valorBotaoLuz=!valorBotaoLuz;
+   if (estadoBotaoLuz == HIGH) {
+    delay(500);
+    valorBotaoLuz=!valorBotaoLuz;
+   }
     Serial.print("Luz Corte Status: ");
     Serial.println(valorBotaoLuz);
     delay(100);
@@ -266,7 +249,7 @@ void AcendeLampada(){
     digitalWrite(Lampada, HIGH);  
     }  
            
-  	if ((valorPresenca == LOW) && (tempo_atual - ultimo_tempo >= 10000)){       //dez segundos ligado   
+    if ((valorPresenca == LOW) && (tempo_atual - ultimo_tempo >= 10000)){       //dez segundos ligado   
     digitalWrite(Lampada, LOW);
     }
 }   
@@ -309,9 +292,9 @@ void leituraLuz(){
 }
 
 
-void enviaDados(){	
- 	MySQL_Cursor *cur_mem = new MySQL_Cursor(&conn); //prepara para enviar ao banco
-   	cur_mem->execute(sentenca); //deste vez é a sentença para incluir uma linha na tabela
+void enviaDados(){  
+  MySQL_Cursor *cur_mem = new MySQL_Cursor(&conn); //prepara para enviar ao banco
+    cur_mem->execute(sentenca); //deste vez é a sentença para incluir uma linha na tabela
     delete cur_mem; //limpa memória do arduíno após enviar ao banco
     delay(1000); //delay de um millis
 }
@@ -367,7 +350,3 @@ void leituraBancoLuz(){
   delay(500); 
    
 }
-
-
-    
-        
